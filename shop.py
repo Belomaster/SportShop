@@ -115,6 +115,13 @@ def remove_product(products, product_id):
     return False
 
 
+# ---------- US-4. Сумма заказа (v1) ----------
+
+def total_sum(products):
+    """Считает сумму цен всех товаров без учёта количества."""
+    return sum(p['price'] for p in products)
+
+
 # ---------- Меню ----------
 
 def main():
