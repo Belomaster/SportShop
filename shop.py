@@ -22,11 +22,34 @@ def save_products(products, filename=PRODUCTS_FILE):
 # ---------- US-1. Товары с низким остатком ----------
 
 def get_low_stock(products, threshold=3):
-    """Возвращает список товаров с количеством <= threshold, отсортированный по возрастанию."""
+    """
+    Возвращает список товаров с низким остатком (<= threshold),
+    отсортированный по возрастанию остатка.
+
+    Поддерживает два формата товара:
+      • {'name': ..., 'sizes': {40: 1, 41: 5}} — остатки по размерам;
+      • {'name': ..., 'quantity': 2}            — общий остаток.
+    """
     if not products:
         return []
-    low = [p for p in products if p.get("quantity", 0) <= threshold]
-    return sorted(low, key=lambda p: p["quantity"])
+
+    low = []
+    for p in products:
+        sizes = p.get("sizes")
+        if sizes:
+            # Есть словарь размеров — берём минимальный остаток
+            min_qty = min(sizes.values())
+            if min_qty <= threshold:
+                low.append((p, min_qty))
+        else:
+            # Иначе — общее поле quantity
+            qty = p.get("quantity", 0)
+            if qty <= threshold:
+                low.append((p, qty))
+
+    # Сортируем по возрастанию остатка и возвращаем сами товары
+    low.sort(key=lambda pair: pair[1])
+    return [p for p, _ in low]
 
 
 def highlight_low_stock(products, threshold=3):
@@ -37,7 +60,8 @@ def highlight_low_stock(products, threshold=3):
         return
     print(f"{'Название':<20}{'Бренд':<15}{'Кол-во':>8}")
     for p in low:
-        print(f"{p['name']:<20}{p.get('brand', '-'):<15}{p['quantity']:>8}")
+        qty = min(p["sizes"].values()) if p.get("sizes") else p.get("quantity", 0)
+        print(f"{p['name']:<20}{p.get('brand', '-'):<15}{qty:>8}")
 
 
 # ---------- US-2. Поиск по названию и бренду ----------
@@ -127,6 +151,64 @@ def total_sum(products):
 def cart_total(cart):
     """Считает итоговую сумму корзины с учётом количества каждой позиции."""
     return sum(item['price'] * item['quantity'] for item in cart)
+
+
+# ---------- Корзина (занятие №8) ----------
+
+def add_to_cart(cart, products, product_id, size, quantity=1):
+    """
+    Добавляет товар в корзину.
+    cart: список словарей {'id', 'name', 'size', 'price', 'quantity'}
+    products: список товаров с ключами 'id', 'name', 'price', 'sizes' (dict {размер: кол-во})
+    Возвращает (True, 'сообщение') или (False, 'сообщение об ошибке').
+    """
+    product = next((p for p in products if p.get('id') == product_id), None)
+    if product is None:
+        return False, 'товар не найден'
+
+    sizes = product.get('sizes', {})
+    if size not in sizes:
+        return False, f'размер {size} не найден'
+
+    if sizes[size] < quantity:
+        return False, 'недостаточно товара на складе'
+
+    # Если позиция уже в корзине — увеличиваем количество
+    for item in cart:
+        if item['id'] == product_id and item['size'] == size:
+            item['quantity'] += quantity
+            sizes[size] -= quantity
+            return True, 'количество увеличено'
+
+    cart.append({
+        'id': product_id,
+        'name': product['name'],
+        'size': size,
+        'price': product['price'],
+        'quantity': quantity,
+    })
+    sizes[size] -= quantity
+    return True, 'добавлено'
+
+
+def remove_from_cart(cart, product_id, size):
+    """Удаляет позицию из корзины. Возвращает True/False."""
+    for i, item in enumerate(cart):
+        if item['id'] == product_id and item['size'] == size:
+            cart.pop(i)
+            return True
+    return False
+
+
+def update_quantity(cart, product_id, size, new_quantity):
+    """Меняет количество позиции. Если new_quantity <= 0 — удаляет."""
+    if new_quantity <= 0:
+        return remove_from_cart(cart, product_id, size)
+    for item in cart:
+        if item['id'] == product_id and item['size'] == size:
+            item['quantity'] = new_quantity
+            return True
+    return False
 
 
 # ---------- Меню ----------
