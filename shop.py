@@ -125,8 +125,8 @@ def total_sum(products):
 # ---------- Корзина покупателя ----------
 
 def cart_total(cart):
-    """Считает итоговую сумму корзины."""
-    return sum(item['price'] for item in cart)
+    """Считает итоговую сумму корзины с учётом количества каждой позиции."""
+    return sum(item['price'] * item['quantity'] for item in cart)
 
 
 # ---------- Меню ----------
